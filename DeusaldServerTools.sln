@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeusaldServerToolsBackend", "DeusaldServerToolsBackend\DeusaldServerToolsBackend.csproj", "{9DBABC48-C4B7-48BB-9900-477C5110A7DC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeusaldServerToolsClient", "DeusaldServerToolsClient\DeusaldServerToolsClient.csproj", "{5B7F7DB2-B468-460B-80E1-A92C3EC44B54}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9DBABC48-C4B7-48BB-9900-477C5110A7DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DBABC48-C4B7-48BB-9900-477C5110A7DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9DBABC48-C4B7-48BB-9900-477C5110A7DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9DBABC48-C4B7-48BB-9900-477C5110A7DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5B7F7DB2-B468-460B-80E1-A92C3EC44B54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B7F7DB2-B468-460B-80E1-A92C3EC44B54}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B7F7DB2-B468-460B-80E1-A92C3EC44B54}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B7F7DB2-B468-460B-80E1-A92C3EC44B54}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
