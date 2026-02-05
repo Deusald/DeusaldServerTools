@@ -50,6 +50,7 @@ public static class WebHostSetupExtensions
     {
         builder.Services.AddControllers().AddNewtonsoftJson();
         builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddHttpContextAccessor();
 
         if (builder.Environment.IsDevOrLower())
         {
