@@ -10,7 +10,7 @@ public static class BinaryHttp
         HttpRequest req = ctx.Request;
         
         string ctHeader = req.ContentType ?? "";
-        if (!ctHeader.StartsWith("application/octet-stream", StringComparison.OrdinalIgnoreCase))
+        if (!ctHeader.StartsWith(System.Net.Mime.MediaTypeNames.Application.Octet, StringComparison.OrdinalIgnoreCase))
             throw new BadHttpRequestException("Unsupported Content-Type.", StatusCodes.Status415UnsupportedMediaType);
         
         if (req.ContentLength is { } len && len > maxBytes)
