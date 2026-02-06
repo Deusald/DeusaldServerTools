@@ -40,7 +40,7 @@ public static class ResolverEndpointMappingExtensions
         foreach (var r in resolverTypes)
         {
             string     route  = r.Endpoint!.Route;
-            HttpMethod method = r.Endpoint.Method;
+            HttpMethodType method = r.Endpoint.Method;
             
             IEndpointConventionBuilder builder = endpoints.MapMethods(route, [method.ToString()], async context =>
             {

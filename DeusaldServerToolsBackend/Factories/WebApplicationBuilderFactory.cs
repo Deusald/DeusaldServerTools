@@ -6,7 +6,8 @@ namespace DeusaldServerToolsBackend;
 
 public static class WebApplicationBuilderFactory
 {
-    public static WebApplicationBuilder Create(string[] args, bool external, bool extendWebRootPath, Type startupClassType)
+    public static WebApplication Create(string[] args, bool external, bool extendWebRootPath, bool portB, Type startupClassType, 
+                                        Action<WebApplicationBuilder, bool> configureServices, Action<WebApplication> configureApp)
     {
         WebApplicationOptions options = new WebApplicationOptions
         {
@@ -34,7 +35,10 @@ public static class WebApplicationBuilderFactory
             builder.Services.AddControllersWithViews().AddNewtonsoftJson()
                    .AddApplicationPart(assembly);
         }
-
-        return builder;
+        
+        configureServices(builder, portB);
+        WebApplication app = builder.Build();
+        configureApp(app);
+        return app;
     }
 }

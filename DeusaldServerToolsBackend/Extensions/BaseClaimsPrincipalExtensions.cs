@@ -23,4 +23,9 @@ public static class BaseClaimsPrincipalExtensions
     {
         return claimsPrincipal.GetGuid(BaseClaimNames.SECURITY_STAMP);
     }
+
+    public static Version GetClientVersion(this ClaimsPrincipal? claimsPrincipal)
+    {
+        return claimsPrincipal.GetVersion(BaseClaimNames.CLIENT_VERSION);
+    }
 }

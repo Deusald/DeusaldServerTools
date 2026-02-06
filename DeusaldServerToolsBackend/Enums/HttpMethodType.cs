@@ -2,7 +2,7 @@
 
 namespace DeusaldServerToolsBackend;
 
-public enum HttpMethod
+public enum HttpMethodType
 {
     GET    = 0,
     POST   = 1,
