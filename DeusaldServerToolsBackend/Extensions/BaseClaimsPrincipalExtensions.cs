@@ -34,15 +34,10 @@ public static class BaseClaimsPrincipalExtensions
     {
         return claimsPrincipal.GetGuid(BaseClaimNames.USER_ID);
     }
-
-    public static DateTime GetExpireDate(this ClaimsPrincipal? claimsPrincipal)
+    
+    public static string GetUsername(this ClaimsPrincipal? claimsPrincipal)
     {
-        return claimsPrincipal.GetDate(BaseClaimNames.EXPIRE);
-    }
-
-    public static string GetBackendVersion(this ClaimsPrincipal? claimsPrincipal)
-    {
-        return claimsPrincipal.GetString(BaseClaimNames.BACKEND_VERSION);
+        return claimsPrincipal.GetString(BaseClaimNames.USERNAME);
     }
     
     public static Guid GetSecurityStamp(this ClaimsPrincipal? claimsPrincipal)
@@ -53,5 +48,15 @@ public static class BaseClaimsPrincipalExtensions
     public static Version GetClientVersion(this ClaimsPrincipal? claimsPrincipal)
     {
         return claimsPrincipal.GetVersion(BaseClaimNames.CLIENT_VERSION);
+    }
+    
+    public static DateTime GetExpireDate(this ClaimsPrincipal? claimsPrincipal)
+    {
+        return claimsPrincipal.GetDate(BaseClaimNames.EXPIRE);
+    }
+
+    public static string GetBackendVersion(this ClaimsPrincipal? claimsPrincipal)
+    {
+        return claimsPrincipal.GetString(BaseClaimNames.BACKEND_VERSION);
     }
 }
