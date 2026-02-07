@@ -29,6 +29,6 @@ namespace DeusaldServerToolsClient
     [PublicAPI]
     public static class DeusaldServerToolsClient
     {
-        public static readonly Version Version = new(1, 0, 0);
+        public static readonly Version Version = new(1, 0, 1);
     }
 }

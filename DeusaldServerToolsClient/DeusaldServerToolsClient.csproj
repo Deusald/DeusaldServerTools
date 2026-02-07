@@ -3,8 +3,8 @@
     <PropertyGroup>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PackageId>DeusaldServerToolsClient</PackageId>
-        <PackageVersion>1.0.0</PackageVersion>
-        <AssemblyVersion>1.0.0</AssemblyVersion>
+        <PackageVersion>1.0.1</PackageVersion>
+        <AssemblyVersion>1.0.1</AssemblyVersion>
         <Title>Deusald Server Tools Client</Title>
         <Authors>Adam "Deusald" Orliński</Authors>
         <Description>C# utils that are often useful in multiplayer game development - client side.</Description>

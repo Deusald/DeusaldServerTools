@@ -167,8 +167,14 @@ namespace DeusaldServerToolsClient
 
             _MsgIdToDeserializer.TryAdd(msgId, ProtoMsg<T>.Deserialize);
 
-            if (_Callbacks.TryGetValue(msgId, out var callbackType)) callbackType.Add(callback);
+            if (_Callbacks.TryGetValue(msgId, out List<Delegate>? callbackType)) callbackType.Add(callback);
             else _Callbacks.Add(msgId, new List<Delegate> { callback });
+        }
+
+        public void UnregisterFromHubMsg<T>(Action<T> callback) where T : ProtoMsg<T>, IHubMsg, new()
+        {
+            string msgId = RequestData.GetHubMsg(typeof(T));
+            _Callbacks[msgId].Remove(callback);
         }
 
         public async Task<TResponse?> MakeAPIRequestAsync<TRequest, TResponse>(TRequest req, bool ignoreError = false)
