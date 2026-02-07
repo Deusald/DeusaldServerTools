@@ -1,6 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageId>DeusaldServerToolsClient</PackageId>
+        <PackageVersion>1.0.0</PackageVersion>
+        <AssemblyVersion>1.0.0</AssemblyVersion>
+        <Title>Deusald Server Tools Client</Title>
+        <Authors>Adam "Deusald" Orliński</Authors>
+        <Description>C# utils that are often useful in multiplayer game development - client side.</Description>
+        <Copyright>Copyright ©Adam "Deusald" Orliński 2020</Copyright>
+        <PackageProjectUrl>https://github.com/Deusald/DeusaldServerTools</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/Deusald/DeusaldServerTools/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/Deusald/DeusaldServerTools</RepositoryUrl>
+        <RepositoryType>Git</RepositoryType>
+        <PackageTags>C# Tools Utils</PackageTags>
         <Nullable>enable</Nullable>
         <OutputType>Library</OutputType>
         <ImplicitUsings>disable</ImplicitUsings>
@@ -9,10 +22,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\deusald-sharp\DeusaldSharp\DeusaldSharp.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
+      <PackageReference Include="DeusaldSharp" Version="8.1.0" />
       <PackageReference Include="Microsoft.AspNetCore.Http.Connections.Common" Version="10.0.2" />
       <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.2" />
       <PackageReference Include="Microsoft.AspNetCore.SignalR.Client.Core" Version="10.0.2" />

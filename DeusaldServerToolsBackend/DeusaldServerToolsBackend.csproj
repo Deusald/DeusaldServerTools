@@ -1,6 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageId>DeusaldServerToolsServer</PackageId>
+        <PackageVersion>1.0.0</PackageVersion>
+        <AssemblyVersion>1.0.0</AssemblyVersion>
+        <Title>Deusald Server Tools Server</Title>
+        <Authors>Adam "Deusald" Orliński</Authors>
+        <Description>C# utils that are often useful in multiplayer game development - server side.</Description>
+        <Copyright>Copyright ©Adam "Deusald" Orliński 2020</Copyright>
+        <PackageProjectUrl>https://github.com/Deusald/DeusaldServerTools</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/Deusald/DeusaldServerTools/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/Deusald/DeusaldServerTools</RepositoryUrl>
+        <RepositoryType>Git</RepositoryType>
+        <PackageTags>C# Tools Utils</PackageTags>
         <Nullable>enable</Nullable>
         <OutputType>Library</OutputType>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -13,7 +26,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="DeusaldSharp" Version="8.0.1" />
+        <PackageReference Include="DeusaldSharp" Version="8.1.0" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.2" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.2" />
