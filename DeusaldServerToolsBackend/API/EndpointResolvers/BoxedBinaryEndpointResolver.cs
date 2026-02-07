@@ -12,14 +12,19 @@ public abstract class BoxedBinaryEndpointResolver<TRequest, TResponse>(ServerRes
 {
     protected abstract int  RequestMaxBytesCount { get; }
     protected virtual  bool CheckMaintenanceMode => true;
+    protected virtual  bool InternalAPI          => false;
 
     public async Task HandleAsync(HttpContext context, CancellationToken ct)
     {
         try
         {
             byte[] requestInBinary = await BinaryHttp.ReadRequestBytesAsync(context, RequestMaxBytesCount, ct);
-            await BinaryHttp.WriteResponseBytesAsync(context,
-                await serverResponseHelper.ServerErrorAPIRequestHandledByteResponseAsync<TRequest, TResponse>(context.User, context.Request, requestInBinary, HandleAsync, CheckMaintenanceMode), ct);
+
+            byte[] response = InternalAPI
+                                  ? await serverResponseHelper.Handle_Internal_REST_API_Request<TRequest, TResponse>(requestInBinary, HandleAsync)
+                                  : await serverResponseHelper.Handle_REST_API_Request<TRequest, TResponse>(context.User, context.Request, requestInBinary, HandleAsync, CheckMaintenanceMode);
+
+            await BinaryHttp.WriteResponseBytesAsync(context, response, ct);
         }
         catch (BadHttpRequestException ex)
         {
@@ -29,5 +34,5 @@ public abstract class BoxedBinaryEndpointResolver<TRequest, TResponse>(ServerRes
         }
     }
 
-    protected abstract Task<TResponse> HandleAsync(ClaimsPrincipal? claimsPrincipal, string? connectionId, TRequest request);
+    protected abstract Task<TResponse> HandleAsync(ClaimsPrincipal? claimsPrincipal, TRequest request);
 }

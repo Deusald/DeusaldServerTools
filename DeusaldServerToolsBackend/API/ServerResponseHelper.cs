@@ -10,31 +10,41 @@ namespace DeusaldServerToolsBackend;
 
 public class ServerResponseHelper(MaintenanceData maintenanceData, ISecurityStampChecker securityStampChecker, IRequestLogContext logCtx)
 {
-    public delegate Task<TResponse> ServerResponseDataDelegate<in TRequest, TResponse>(ClaimsPrincipal? claimsPrincipal, string? connectionId, TRequest verifiedRequest);
+    public delegate Task<TResponse> ServerResponse_REST_API_Delegate<in TRequest, TResponse>(ClaimsPrincipal claimsPrincipal, TRequest request);
+
+    public delegate Task<TResponse> ServerResponse_Hub_Delegate<in TRequest, TResponse>(HubRequestContext hubRequestContext, TRequest request);
 
     private readonly Logger _Logger = LogManager.GetCurrentClassLogger();
 
-    public async Task<byte[]> ServerErrorAPIRequestHandledByteResponseAsync<TRequest, TResponse>(ClaimsPrincipal? claimsPrincipal, HttpRequest request,
-                                                                                                 byte[] binaryRequest, ServerResponseDataDelegate<TRequest, TResponse> serverResponseDelegate,
-                                                                                                 bool checkMaintenanceMode)
+    public async Task<byte[]> Handle_REST_API_Request<TRequest, TResponse>(ClaimsPrincipal? claimsPrincipal, HttpRequest request,
+                                                                           byte[] binaryRequest, ServerResponse_REST_API_Delegate<TRequest, TResponse> serverResponseDelegate,
+                                                                           bool checkMaintenanceMode)
         where TRequest : ProtoMsg<TRequest>, IRequest, new() where TResponse : ProtoMsg<TResponse>, IResponse, new()
     {
         claimsPrincipal ??= new ClaimsPrincipal();
         claimsPrincipal.InjectVersion(request.ExtractVersion(), BaseClaimNames.CLIENT_VERSION);
-        return await ServerErrorHandledByteResponseAsync(claimsPrincipal, null, binaryRequest, serverResponseDelegate, checkMaintenanceMode, false);
+        return await ServerErrorHandledByteResponseAsync(claimsPrincipal, null, binaryRequest, serverResponseDelegate, null, checkMaintenanceMode, false);
     }
 
-    public async Task<byte[]> ServerErrorInternalHandledByteResponseAsync<TRequest, TResponse>(byte[] binaryRequest, ServerResponseDataDelegate<TRequest, TResponse> serverResponseDelegate)
+    public async Task<byte[]> Handle_Internal_REST_API_Request<TRequest, TResponse>(byte[] binaryRequest, ServerResponse_REST_API_Delegate<TRequest, TResponse> serverResponseDelegate)
         where TRequest : ProtoMsg<TRequest>, IRequest, new() where TResponse : ProtoMsg<TResponse>, IResponse, new()
     {
         ClaimsPrincipal claimsPrincipal = new();
         claimsPrincipal.InjectVersion(Versions.MaxVersion, BaseClaimNames.CLIENT_VERSION);
-        return await ServerErrorHandledByteResponseAsync(claimsPrincipal, null, binaryRequest, serverResponseDelegate, false, false);
+        return await ServerErrorHandledByteResponseAsync(claimsPrincipal, null, binaryRequest, serverResponseDelegate, null, false, false);
     }
 
-    private async Task<byte[]> ServerErrorHandledByteResponseAsync<TRequest, TResponse>(ClaimsPrincipal claimsPrincipal, string? connectionId, byte[] binaryRequest,
-                                                                                        ServerResponseDataDelegate<TRequest, TResponse> serverResponseDelegate, bool checkMaintenanceMode,
-                                                                                        bool heartBeat)
+    public async Task<byte[]> Handle_Hub_Request<TRequest, TResponse>(HubRequestContext hubRequestContext, byte[] binaryRequest,
+                                                                      ServerResponse_Hub_Delegate<TRequest, TResponse> serverResponseDelegate, bool checkMaintenanceMode, bool heartBeat)
+        where TRequest : ProtoMsg<TRequest>, IRequest, new() where TResponse : ProtoMsg<TResponse>, IResponse, new()
+    {
+        return await ServerErrorHandledByteResponseAsync(hubRequestContext.Caller.User!, hubRequestContext, binaryRequest, null, serverResponseDelegate, checkMaintenanceMode, heartBeat);
+    }
+
+    private async Task<byte[]> ServerErrorHandledByteResponseAsync<TRequest, TResponse>(ClaimsPrincipal claimsPrincipal, HubRequestContext? hubContext, byte[] binaryRequest,
+                                                                                        ServerResponse_REST_API_Delegate<TRequest, TResponse>? restDelegate,
+                                                                                        ServerResponse_Hub_Delegate<TRequest, TResponse>? hubDelegate,
+                                                                                        bool checkMaintenanceMode, bool heartBeat)
         where TRequest : ProtoMsg<TRequest>, IRequest, new() where TResponse : ProtoMsg<TResponse>, IResponse, new()
     {
         ServerResponse<TResponse> serverResponse;
@@ -42,7 +52,6 @@ public class ServerResponseHelper(MaintenanceData maintenanceData, ISecurityStam
 
         if (claimsPrincipal.FindFirst(BaseClaimNames.USER_ID) != null)
         {
-            logCtx.SetUserId(claimsPrincipal.GetUserId().ToString());
             bool unauthorized = claimsPrincipal.GetExpireDate() < DateTime.UtcNow || claimsPrincipal.GetBackendVersion() != BaseEnvVariables.BACKEND_VERSION.GetEnvironmentVariable()!;
             unauthorized |= !heartBeat && await securityStampChecker.IsSecurityStampInvalidAsync(claimsPrincipal.GetSecurityStamp());
             if (unauthorized) return new ServerResponse<TResponse>(HttpStatusCode.Unauthorized, ErrorCode.Unauthorized, "User is not authorized.", Guid.Empty).Serialize();
@@ -60,7 +69,7 @@ public class ServerResponseHelper(MaintenanceData maintenanceData, ISecurityStam
                     throw new ServerException(ErrorCode.ClientUnsupported, LogLevel.Off, "Client is too old");
                 TRequest request = ProtoMsg<TRequest>.Deserialize(binaryRequest);
                 request.VerifyData();
-                TResponse responseData = await serverResponseDelegate(claimsPrincipal, connectionId, request);
+                TResponse responseData = restDelegate != null ? await restDelegate(claimsPrincipal, request) : await hubDelegate!(hubContext!, request);
                 serverResponse = new ServerResponse<TResponse>(responseData);
             }
             catch (ServerException serverException)
@@ -74,7 +83,7 @@ public class ServerResponseHelper(MaintenanceData maintenanceData, ISecurityStam
             }
             catch (Exception exception)
             {
-                errorId = Guid.NewGuid();
+                errorId        = Guid.NewGuid();
                 serverResponse = new ServerResponse<TResponse>(HttpStatusCode.InternalServerError, ErrorCode.ServerInternalError, "Unexpected server error.", errorId);
                 logCtx.SetErrorId(errorId.ToString());
                 logCtx.SetErrorType(nameof(ErrorCode.ServerInternalError));
