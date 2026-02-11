@@ -3,8 +3,8 @@
     <PropertyGroup>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PackageId>DeusaldServerToolsClient</PackageId>
-        <PackageVersion>1.1.0</PackageVersion>
-        <AssemblyVersion>1.1.0</AssemblyVersion>
+        <PackageVersion>1.2.0</PackageVersion>
+        <AssemblyVersion>1.2.0</AssemblyVersion>
         <Title>Deusald Server Tools Client</Title>
         <Authors>Adam "Deusald" Orliński</Authors>
         <Description>C# utils that are often useful in multiplayer game development - client side.</Description>
@@ -22,8 +22,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="DeusaldSharp" Version="10.2.1" />
-      <PackageReference Include="DeusaldSharp.Analyzers" Version="10.2.1" PrivateAssets="All" />
+      <PackageReference Include="DeusaldSharp" Version="10.3.1" />
+      <PackageReference Include="DeusaldSharp.Analyzers" Version="10.3.1" PrivateAssets="All" />
       <PackageReference Include="Microsoft.AspNetCore.Http.Connections.Common" Version="10.0.3" />
       <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.3" />
       <PackageReference Include="Microsoft.AspNetCore.SignalR.Client.Core" Version="10.0.3" />
