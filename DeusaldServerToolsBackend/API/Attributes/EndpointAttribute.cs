@@ -28,10 +28,21 @@ namespace DeusaldServerToolsBackend;
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-public class EndpointAttribute(HttpMethodType method, string route) : Attribute
+public class EndpointAttribute : Attribute
 {
-    public HttpMethodType Method { get; } = method;
-    public string         Route  { get; } = route;
+    public SendMethodType? Method  { get; }
+    public string          Address { get; }
 
-    public EndpointAttribute(Type requestType) : this(RequestData.GetHttpMethodType(requestType), RequestData.GetUrl(requestType)) { }
+    public EndpointAttribute()
+    {
+        // The Method and Route will be read from the request type
+        Method  = null;
+        Address = string.Empty;
+    }
+
+    public EndpointAttribute(SendMethodType method, string address)
+    {
+        Method  = method;
+        Address = address;
+    }
 }

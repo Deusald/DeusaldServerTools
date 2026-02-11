@@ -27,4 +27,4 @@ namespace DeusaldServerToolsBackend;
 
 [PublicAPI]
 [AttributeUsage(AttributeTargets.Class)]
-public sealed class EndpointAllowAnonymousAttribute : Attribute { }
+public sealed class EndpointAllowAnonymousAttribute : Attribute;

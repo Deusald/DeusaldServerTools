@@ -24,30 +24,29 @@
 using System.Net;
 using System.Security.Claims;
 using DeusaldServerToolsClient;
-using DeusaldSharp;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Http;
 
 namespace DeusaldServerToolsBackend;
 
 [PublicAPI]
-public abstract class BoxedBinaryEndpointResolver<TRequest, TResponse>(ServerResponseHelper serverResponseHelper) : IEndpointResolver
-    where TRequest : ProtoMsg<TRequest>, IRequest, new()
-    where TResponse : ProtoMsg<TResponse>, IResponse, new()
+public abstract class ProtoPairBinaryEndpointResolver<TRequest, TResponse>(ServerResponseHelper serverResponseHelper) : IPairEndpointResolver<TRequest, TResponse>, IEndpointResolver
+    where TRequest : RequestBase<TResponse>, new()
+    where TResponse : ResponseBase, new()
 {
-    protected abstract int  RequestMaxBytesCount { get; }
-    protected virtual  bool CheckMaintenanceMode => true;
-    protected virtual  bool InternalAPI          => false;
+    protected abstract int  _RequestMaxBytesCount { get; }
+    protected virtual  bool _CheckMaintenanceMode => true;
+    protected virtual  bool _InternalAPI          => false;
 
     public async Task HandleAsync(HttpContext context, CancellationToken ct)
     {
         try
         {
-            byte[] requestInBinary = await BinaryHttp.ReadRequestBytesAsync(context, RequestMaxBytesCount, ct);
+            byte[] requestInBinary = await BinaryHttp.ReadRequestBytesAsync(context, _RequestMaxBytesCount, ct);
 
-            byte[] response = InternalAPI
+            byte[] response = _InternalAPI
                                   ? await serverResponseHelper.Handle_Internal_REST_API_Request<TRequest, TResponse>(requestInBinary, HandleAsync)
-                                  : await serverResponseHelper.Handle_REST_API_Request<TRequest, TResponse>(context.User, context.Request, requestInBinary, HandleAsync, CheckMaintenanceMode);
+                                  : await serverResponseHelper.Handle_REST_API_Request<TRequest, TResponse>(context.User, context.Request, requestInBinary, HandleAsync, _CheckMaintenanceMode);
 
             await BinaryHttp.WriteResponseBytesAsync(context, response, ct);
         }

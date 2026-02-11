@@ -21,7 +21,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using DeusaldSharp;
+
 namespace DeusaldServerToolsClient
 {
-    public interface IResponse { }
+    public abstract class HubMsgBase : ProtoMsgBase
+    {
+        public abstract string Address { get; }
+    }
 }

@@ -26,38 +26,24 @@ using System.Net;
 using DeusaldSharp;
 using JetBrains.Annotations;
 
-// ReSharper disable InconsistentNaming
-
 namespace DeusaldServerToolsClient
 {
     [PublicAPI]
-    public class ServerResponse<T> : ProtoMsg<ServerResponse<T>> where T : ProtoMsg<T>, IResponse, new()
+    public partial class ServerResponse<TResponse> : ResponseBase where TResponse : ResponseBase, new()
     {
-        public bool           Success;
-        public HttpStatusCode StatusCode;
-        public ErrorCode      ErrorCode;
-        public string         ErrorMessage;
-        public Guid           ServerErrorId;
-        public T?             Data;
-
-        static ServerResponse()
-        {
-            _model = new ProtoModel<ServerResponse<T>>(
-                ProtoField.Bool(1, static (ref ServerResponse<T> o) => ref o.Success),
-                ProtoField.HttpStatusCode(2, static (ref ServerResponse<T> o) => ref o.StatusCode),
-                ProtoField.SerializableEnum(3, static (ref ServerResponse<T> o) => ref o.ErrorCode),
-                ProtoField.String(4, static (ref ServerResponse<T> o) => ref o.ErrorMessage),
-                ProtoField.Guid(5, static (ref ServerResponse<T> o) => ref o.ServerErrorId),
-                ProtoField.NullableObject(6, static (ref ServerResponse<T> o) => ref o.Data)
-            );
-        }
+        [ProtoField(1)] public bool           Success;
+        [ProtoField(2)] public HttpStatusCode StatusCode;
+        [ProtoField(3)] public ErrorCode      ErrorCode;
+        [ProtoField(4)] public string         ErrorMessage;
+        [ProtoField(5)] public Guid           ServerErrorId;
+        [ProtoField(6)] public TResponse?     Data;
 
         public ServerResponse()
         {
             ErrorMessage = "";
         }
 
-        public ServerResponse(T data)
+        public ServerResponse(TResponse data)
         {
             Success       = true;
             StatusCode    = HttpStatusCode.OK;

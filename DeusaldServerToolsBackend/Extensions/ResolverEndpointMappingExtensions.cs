@@ -30,6 +30,18 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace DeusaldServerToolsBackend;
 
+public sealed class HubResolverRegistry
+{
+    private readonly Dictionary<string, Type> _Map = new(StringComparer.OrdinalIgnoreCase);
+    
+    public Type Get(string requestId)
+        => _Map.TryGetValue(requestId, out Type? t)
+               ? t
+               : throw new ServerException(ErrorCode.WrongRequestId, $"Unknown requestId '{requestId}'.");
+    
+    public bool TryAdd(string requestId, Type resolverType) => _Map.TryAdd(requestId, resolverType);
+}
+
 [PublicAPI]
 public static class ResolverEndpointMappingExtensions
 {
@@ -43,7 +55,7 @@ public static class ResolverEndpointMappingExtensions
                       .ToList();
 
         foreach (Type t in resolverTypes) services.AddScoped(t);
-
+        services.AddSingleton(new HubResolverRegistry());
         return services;
     }
 
@@ -63,26 +75,51 @@ public static class ResolverEndpointMappingExtensions
                       .Where(x => x.Endpoint != null)
                       .ToList();
 
+        HubResolverRegistry hubResolverRegistry = endpoints.ServiceProvider.GetRequiredService<HubResolverRegistry>();
+        
         foreach (var r in resolverTypes)
         {
-            string     route  = r.Endpoint!.Route;
-            HttpMethodType method = r.Endpoint.Method;
-            
-            IEndpointConventionBuilder builder = endpoints.MapMethods(route, [method.ToString()], async context =>
+            string          address = r.Endpoint!.Address;
+            SendMethodType? method  = r.Endpoint.Method;
+
+            if (method == null) // We need to find route and method from request type
             {
-                CancellationToken ct = context.RequestAborted;
-                IEndpointResolver resolver = (IEndpointResolver)context.RequestServices.GetRequiredService(r.Type);
-                await resolver.HandleAsync(context, ct);
-            });
-            
-            if (r.Auth != null && r.AllowAnonymus != null) throw new Exception("Method can't be authorized and non authorized at the same time!");
-            if (r.AllowAnonymus != null)
-            {
-                builder.AllowAnonymous();
-                continue;
+                Type? match = r.Type
+                               .GetInterfaces()
+                               .FirstOrDefault(i =>
+                                    i.IsGenericType &&
+                                    i.GetGenericTypeDefinition() == typeof(IPairEndpointResolver<,>));
+
+                if (match == null) throw new Exception("Parameterless Endpoint has to implement IPairEndpointResolver<,> so address and method can be extracted from Request type");
+
+                Type requestType = match.GetGenericArguments()[0];
+                if (Activator.CreateInstance(requestType) is not IRequestMetadata meta) throw new Exception("Parameterless Request type of Endpoint has to implement IRequestMetadata");
+                address = meta.Address;
+                method  = meta.SendMethod;
             }
-            if (r.Auth == null) builder.RequireAuthorization();
-            else builder.RequireAuthorization(r.Auth.Policy);
+
+            if (method == SendMethodType.SignalR_Hub)
+            {
+                if (!hubResolverRegistry.TryAdd(address, r.Type)) throw new InvalidOperationException($"Duplicate HubRequestId '{address}'.");
+            }
+            else
+            {
+                IEndpointConventionBuilder builder = endpoints.MapMethods(address, [method.Value.ToHttpMethod().Method.ToUpper()], async context =>
+                {
+                    CancellationToken ct       = context.RequestAborted;
+                    IEndpointResolver resolver = (IEndpointResolver)context.RequestServices.GetRequiredService(r.Type);
+                    await resolver.HandleAsync(context, ct);
+                });
+
+                if (r.Auth != null && r.AllowAnonymus != null) throw new Exception("Method can't be authorized and non authorized at the same time!");
+                if (r.AllowAnonymus != null)
+                {
+                    builder.AllowAnonymous();
+                    continue;
+                }
+                if (r.Auth == null) builder.RequireAuthorization();
+                else builder.RequireAuthorization(r.Auth.Policy);
+            }
         }
     }
 }

@@ -21,20 +21,21 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-using System;
-using JetBrains.Annotations;
+using System.Threading.Tasks;
+using DeusaldSharp;
 
 namespace DeusaldServerToolsClient
 {
-    [PublicAPI]
-    [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-    public class HubMsgAttribute : Attribute
+    public abstract class RequestBase<TResponse> : ProtoMsgBase, IRequestMetadata, IVerifiable where TResponse : ResponseBase, new()
     {
-        public string MsgId { get; }
+        public abstract SendMethodType SendMethod { get; }
+        public abstract string         Address    { get; }
 
-        public HubMsgAttribute(Type msgType)
+        public async Task<TResponse?> SendAsync(APIClient client, bool ignoreError = false)
         {
-            MsgId = RequestData.GetHubMsg(msgType);
+            return await client.SendRequestAsync<RequestBase<TResponse>, TResponse>(this, ignoreError);
         }
+        
+        public abstract void VerifyData();
     }
 }

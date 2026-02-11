@@ -44,7 +44,7 @@ public class ServerResponseHelper(MaintenanceData maintenanceData, ISecurityStam
     public async Task<byte[]> Handle_REST_API_Request<TRequest, TResponse>(ClaimsPrincipal? claimsPrincipal, HttpRequest request,
                                                                            byte[] binaryRequest, ServerResponse_REST_API_Delegate<TRequest, TResponse> serverResponseDelegate,
                                                                            bool checkMaintenanceMode)
-        where TRequest : ProtoMsg<TRequest>, IRequest, new() where TResponse : ProtoMsg<TResponse>, IResponse, new()
+        where TRequest : RequestBase<TResponse>, new() where TResponse : ResponseBase, new()
     {
         claimsPrincipal ??= new ClaimsPrincipal();
         claimsPrincipal.InjectVersion(request.ExtractVersion(), BaseClaimNames.CLIENT_VERSION);
@@ -52,7 +52,7 @@ public class ServerResponseHelper(MaintenanceData maintenanceData, ISecurityStam
     }
 
     public async Task<byte[]> Handle_Internal_REST_API_Request<TRequest, TResponse>(byte[] binaryRequest, ServerResponse_REST_API_Delegate<TRequest, TResponse> serverResponseDelegate)
-        where TRequest : ProtoMsg<TRequest>, IRequest, new() where TResponse : ProtoMsg<TResponse>, IResponse, new()
+        where TRequest : RequestBase<TResponse>, new() where TResponse : ResponseBase, new()
     {
         ClaimsPrincipal claimsPrincipal = new();
         claimsPrincipal.InjectVersion(Versions.MaxVersion, BaseClaimNames.CLIENT_VERSION);
@@ -61,7 +61,7 @@ public class ServerResponseHelper(MaintenanceData maintenanceData, ISecurityStam
 
     public async Task<byte[]> Handle_Hub_Request<TRequest, TResponse>(HubRequestContext hubRequestContext, byte[] binaryRequest,
                                                                       ServerResponse_Hub_Delegate<TRequest, TResponse> serverResponseDelegate, bool checkMaintenanceMode, bool heartBeat)
-        where TRequest : ProtoMsg<TRequest>, IRequest, new() where TResponse : ProtoMsg<TResponse>, IResponse, new()
+        where TRequest : RequestBase<TResponse>, new() where TResponse : ResponseBase, new()
     {
         return await ServerErrorHandledByteResponseAsync(hubRequestContext.Caller.User!, hubRequestContext, binaryRequest, null, serverResponseDelegate, checkMaintenanceMode, heartBeat);
     }
@@ -70,7 +70,7 @@ public class ServerResponseHelper(MaintenanceData maintenanceData, ISecurityStam
                                                                                         ServerResponse_REST_API_Delegate<TRequest, TResponse>? restDelegate,
                                                                                         ServerResponse_Hub_Delegate<TRequest, TResponse>? hubDelegate,
                                                                                         bool checkMaintenanceMode, bool heartBeat)
-        where TRequest : ProtoMsg<TRequest>, IRequest, new() where TResponse : ProtoMsg<TResponse>, IResponse, new()
+        where TRequest : RequestBase<TResponse>, new() where TResponse : ResponseBase, new()
     {
         ServerResponse<TResponse> serverResponse;
         Guid                      errorId = Guid.Empty;
@@ -92,7 +92,7 @@ public class ServerResponseHelper(MaintenanceData maintenanceData, ISecurityStam
             {
                 if (claimsPrincipal.GetClientVersion() < maintenanceData.MinClientVersion)
                     throw new ServerException(ErrorCode.ClientUnsupported, LogLevel.Off, "Client is too old");
-                TRequest request = ProtoMsg<TRequest>.Deserialize(binaryRequest);
+                TRequest request = ProtoMsgBase.Deserialize<TRequest>(binaryRequest);
                 request.VerifyData();
                 TResponse responseData = restDelegate != null ? await restDelegate(claimsPrincipal, request) : await hubDelegate!(hubContext!, request);
                 serverResponse = new ServerResponse<TResponse>(responseData);

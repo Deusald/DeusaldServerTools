@@ -29,13 +29,13 @@ namespace DeusaldServerToolsBackend;
 [PublicAPI]
 public abstract class BinaryEndpointResolver : IEndpointResolver
 {
-    protected abstract int RequestMaxBytesCount { get; }
+    protected abstract int _RequestMaxBytesCount { get; }
     
     public async Task HandleAsync(HttpContext context, CancellationToken ct)
     {
         try
         {
-            byte[] response = await HandleAsync(RequestMaxBytesCount == 0 ? [] : await BinaryHttp.ReadRequestBytesAsync(context, RequestMaxBytesCount, ct), ct);
+            byte[] response = await HandleAsync(_RequestMaxBytesCount == 0 ? [] : await BinaryHttp.ReadRequestBytesAsync(context, _RequestMaxBytesCount, ct), ct);
             await BinaryHttp.WriteResponseBytesAsync(context, response, ct);
         }
         catch (BadHttpRequestException ex)

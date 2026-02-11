@@ -22,14 +22,17 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="DeusaldServerToolsClient" Version="1.0.0" />
-        <PackageReference Include="DeusaldSharp" Version="8.1.0" />
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
-        <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.2" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.2" />
+        <PackageReference Include="DeusaldSharp" Version="10.2.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.3" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.3" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
         <PackageReference Include="NLog" Version="6.1.0" />
         <PackageReference Include="NLog.Extensions.Logging" Version="6.1.1" />
-        <PackageReference Include="StackExchange.Redis" Version="2.10.1" />
+        <PackageReference Include="StackExchange.Redis" Version="2.10.14" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\DeusaldServerToolsClient\DeusaldServerToolsClient.csproj" />
     </ItemGroup>
     
 </Project>

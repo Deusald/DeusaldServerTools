@@ -21,20 +21,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// ReSharper disable InconsistentNaming
-
-using JetBrains.Annotations;
+using DeusaldSharp;
 
 namespace DeusaldServerToolsClient
 {
-    [PublicAPI]
-    public enum HttpMethodType
-    {
-        GET    = 0,
-        POST   = 1,
-        PATCH  = 2,
-        PUT    = 3,
-        DELETE = 4,
-        HEAD   = 5
-    }
+    public abstract class ResponseBase : ProtoMsgBase { }
 }

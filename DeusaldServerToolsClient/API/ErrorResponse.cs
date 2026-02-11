@@ -21,17 +21,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-using DeusaldSharp;
 using JetBrains.Annotations;
 
 namespace DeusaldServerToolsClient
 {
     [PublicAPI]
-    public class ErrorResponse : ProtoMsg<ErrorResponse>, IResponse
-    {
-        static ErrorResponse()
-        {
-            _model = new ProtoModel<ErrorResponse>();
-        }
-    }
+    public partial class ErrorResponse : ResponseBase { }
 }

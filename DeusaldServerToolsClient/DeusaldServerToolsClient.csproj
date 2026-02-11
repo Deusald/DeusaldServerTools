@@ -22,11 +22,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="DeusaldSharp" Version="8.1.0" />
-      <PackageReference Include="Microsoft.AspNetCore.Http.Connections.Common" Version="10.0.2" />
-      <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.2" />
-      <PackageReference Include="Microsoft.AspNetCore.SignalR.Client.Core" Version="10.0.2" />
-      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+      <PackageReference Include="DeusaldSharp" Version="10.2.0" />
+      <PackageReference Include="DeusaldSharp.Analyzers" Version="10.2.0" PrivateAssets="All" />
+      <PackageReference Include="Microsoft.AspNetCore.Http.Connections.Common" Version="10.0.3" />
+      <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.3" />
+      <PackageReference Include="Microsoft.AspNetCore.SignalR.Client.Core" Version="10.0.3" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     </ItemGroup>
     

@@ -21,42 +21,28 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-using System.Reflection;
+using System.Net;
 using DeusaldServerToolsClient;
 using JetBrains.Annotations;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace DeusaldServerToolsBackend;
 
-public sealed class HubResolverRegistry(Dictionary<string, Type> map)
-{
-    public Type Get(string requestId)
-        => map.TryGetValue(requestId, out Type? t)
-               ? t
-               : throw new ServerException(ErrorCode.WrongRequestId ,$"Unknown requestId '{requestId}'.");
-}
-
 [PublicAPI]
-public static class HubResolverRegistration
+public abstract class ProtoPairBinaryHubEndpointResolver<TRequest, TResponse>(ServerResponseHelper serverResponseHelper) : IPairEndpointResolver<TRequest, TResponse>, IHubRequestResolver
+    where TRequest : RequestBase<TResponse>, new()
+    where TResponse : ResponseBase, new()
 {
-    public static IServiceCollection AddHubResolvers(this IServiceCollection services, params Assembly[] assemblies)
+    protected abstract int  _RequestMaxBytesCount { get; }
+    protected virtual  bool _CheckMaintenanceMode => true;
+    protected virtual  bool _HeartBeat            => false;
+
+    public async Task<byte[]> HandleAsync(HubRequestContext ctx, byte[] request, CancellationToken ct)
     {
-        Dictionary<string, Type> map = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+        if (request.Length > _RequestMaxBytesCount)
+            return new ServerResponse<TResponse>(HttpStatusCode.RequestEntityTooLarge, ErrorCode.CantDeserializeRequest, "Error while processing request.", Guid.Empty).Serialize();
 
-        foreach (Type t in assemblies.SelectMany(a => a.GetTypes()))
-        {
-            if (!t.IsClass || t.IsAbstract) continue;
-            if (!typeof(IHubRequestResolver).IsAssignableFrom(t)) continue;
-
-            HubRequestAttribute? attr = t.GetCustomAttribute<HubRequestAttribute>();
-            if (attr is null) continue;
-
-            if (!map.TryAdd(attr.RequestId, t)) throw new InvalidOperationException($"Duplicate HubRequestId '{attr.RequestId}'.");
-            
-            services.AddScoped(t);
-        }
-
-        services.AddSingleton(new HubResolverRegistry(map));
-        return services;
+        return await serverResponseHelper.Handle_Hub_Request<TRequest, TResponse>(ctx, request, HandleAsync, _CheckMaintenanceMode, _HeartBeat);
     }
+
+    protected abstract Task<TResponse> HandleAsync(HubRequestContext ctx, TRequest request);
 }

@@ -29,15 +29,15 @@ namespace DeusaldServerToolsBackend;
 [PublicAPI]
 public abstract class StringEndpointResolver : IEndpointResolver
 {
-    protected abstract int    RequestMaxCharactersCount { get; }
-    protected abstract string ResponseContentType       { get; }
+    protected abstract int    _RequestMaxCharactersCount { get; }
+    protected abstract string _ResponseContentType       { get; }
 
     public async Task HandleAsync(HttpContext context, CancellationToken ct)
     {
         try
         {
-            string response = await HandleAsync(RequestMaxCharactersCount == 0 ? string.Empty : await TextHttp.ReadRequestTextAsync(context, RequestMaxCharactersCount), ct);
-            await TextHttp.WriteResponseTextAsync(context, response, $"{ResponseContentType}; charset=utf-8", ct);
+            string response = await HandleAsync(_RequestMaxCharactersCount == 0 ? string.Empty : await TextHttp.ReadRequestTextAsync(context, _RequestMaxCharactersCount), ct);
+            await TextHttp.WriteResponseTextAsync(context, response, $"{_ResponseContentType}; charset=utf-8", ct);
         }
         catch (BadHttpRequestException ex)
         {

@@ -56,9 +56,9 @@ public static class HubExtensions
         return hubContext.Clients.GroupExcept(GetGroupName(guid, hubSubscriptionType), except);
     }
 
-    public static async Task SendMsgAsync<TMsg>(this IHubClient client, TMsg message) where TMsg : ProtoMsg<TMsg>, IHubMsg, new()
+    public static async Task SendMsgAsync<TMsg>(this TMsg message, IHubClient client) where TMsg : HubMsgBase, new()
     {
-        await client.OnMessageFromServerAsync(RequestData.GetHubMsg(typeof(TMsg)), message.Serialize());
+        await client.OnMessageFromServerAsync(message.Address, message.Serialize());
     }
     
     private static string GetGroupName<TSub>(Guid guid, TSub hubSubscriptionType)

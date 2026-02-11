@@ -21,7 +21,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using JetBrains.Annotations;
+
 namespace DeusaldServerToolsClient
 {
-    public interface IRequest : IVerifiable { }
+    [PublicAPI]
+    public enum SendMethodType
+    {
+        Http_Get    = 0,
+        Http_Post   = 1,
+        Http_Patch  = 2,
+        Http_Put    = 3,
+        Http_Delete = 4,
+        Http_Head   = 5,
+        SignalR_Hub = 6
+    }
 }

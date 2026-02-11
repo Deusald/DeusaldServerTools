@@ -59,16 +59,16 @@ namespace DeusaldServerToolsClient
         private HubConnection? _HubConnection;
         private string         _BaseUrl;
 
-        private readonly Dictionary<string, List<Delegate>>        _Callbacks           = new();
-        private readonly Dictionary<string, Func<byte[], IHubMsg>> _MsgIdToDeserializer = new();
-        private readonly ConcurrentQueue<Message>                  _OnMessageFromHubQueue;
-        private readonly ConcurrentQueue<Exception?>               _OnDisconnectedFromHubMessagesQueue;
-        private readonly bool                                      _WithDispatcher;
-        private readonly Dictionary<BackendAddress, string>        _Addresses = new();
-        private readonly ILoggerProvider                           _LoggerProvider;
-        private readonly ILogger                                   _Logger;
-        private readonly HttpClient                                _HttpClient;
-        private readonly OnRequestError                            _OnRequestError;
+        private readonly Dictionary<string, List<Delegate>>           _Callbacks           = new();
+        private readonly Dictionary<string, Func<byte[], HubMsgBase>> _MsgIdToDeserializer = new();
+        private readonly ConcurrentQueue<Message>                     _OnMessageFromHubQueue;
+        private readonly ConcurrentQueue<Exception?>                  _OnDisconnectedFromHubMessagesQueue;
+        private readonly bool                                         _WithDispatcher;
+        private readonly Dictionary<BackendAddress, string>           _Addresses = new();
+        private readonly ILoggerProvider                              _LoggerProvider;
+        private readonly ILogger                                      _Logger;
+        private readonly HttpClient                                   _HttpClient;
+        private readonly OnRequestError                               _OnRequestError;
 
         public APIClient(Dictionary<BackendAddress, string> addresses, bool withDispatcher, OnRequestError onRequestError, ILoggerProvider loggerProvider, Version clientVersion)
         {
@@ -161,30 +161,38 @@ namespace DeusaldServerToolsClient
             }
         }
 
-        public void RegisterToHubMsg<T>(Action<T> callback) where T : ProtoMsg<T>, IHubMsg, new()
+        public void RegisterToHubMsg<T>(Action<T> callback) where T : HubMsgBase, new()
         {
-            string msgId = RequestData.GetHubMsg(typeof(T));
+            string msgId = new T().Address;
 
-            _MsgIdToDeserializer.TryAdd(msgId, ProtoMsg<T>.Deserialize);
+            _MsgIdToDeserializer.TryAdd(msgId, ProtoMsgBase.Deserialize<T>);
 
             if (_Callbacks.TryGetValue(msgId, out List<Delegate>? callbackType)) callbackType.Add(callback);
             else _Callbacks.Add(msgId, new List<Delegate> { callback });
         }
 
-        public void UnregisterFromHubMsg<T>(Action<T> callback) where T : ProtoMsg<T>, IHubMsg, new()
+        public void UnregisterFromHubMsg<T>(Action<T> callback) where T : HubMsgBase, new()
         {
-            string msgId = RequestData.GetHubMsg(typeof(T));
+            string msgId = new T().Address;
             _Callbacks[msgId].Remove(callback);
         }
 
-        public async Task<TResponse?> MakeAPIRequestAsync<TRequest, TResponse>(TRequest req, bool ignoreError = false)
-            where TRequest : ProtoMsg<TRequest>, IRequest, new()
-            where TResponse : ProtoMsg<TResponse>, IResponse, new()
+        public async Task<TResponse?> SendRequestAsync<TRequest, TResponse>(TRequest req, bool ignoreError = false)
+            where TRequest : RequestBase<TResponse>
+            where TResponse : ResponseBase, new()
+        {
+            if (req.SendMethod == SendMethodType.SignalR_Hub) return await SendHubRequestAsync<TRequest, TResponse>(req, ignoreError);
+            return await SendRESTRequestAsync<TRequest, TResponse>(req, ignoreError);
+        }
+
+        private async Task<TResponse?> SendRESTRequestAsync<TRequest, TResponse>(TRequest req, bool ignoreError = false)
+            where TRequest : RequestBase<TResponse>
+            where TResponse : ResponseBase, new()
         {
             try
             {
-                HttpMethod         httpMethod     = new HttpMethod(RequestData.GetHttpMethodType<TRequest>().ToString());
-                string             url            = RequestData.GetUrl<TRequest>();
+                HttpMethod         httpMethod     = req.SendMethod.ToHttpMethod();
+                string             url            = $"/{req.Address}";
                 HttpRequestMessage requestMessage = new HttpRequestMessage(httpMethod, url);
                 HttpContent        content        = new ByteArrayContent(req.Serialize());
                 content.Headers.ContentType = new MediaTypeHeaderValue(System.Net.Mime.MediaTypeNames.Application.Octet);
@@ -200,7 +208,7 @@ namespace DeusaldServerToolsClient
                 }
 
                 byte[]                    responseDataBytes = await result.Content.ReadAsByteArrayAsync();
-                ServerResponse<TResponse> response          = ServerResponse<TResponse>.Deserialize(responseDataBytes);
+                ServerResponse<TResponse> response          = ProtoMsgBase.Deserialize<ServerResponse<TResponse>>(responseDataBytes);
                 if (response.ErrorCode == ErrorCode.Unauthorized) OnUnauthorizedError?.Invoke();
 
                 if (response.Success) return response.Data;
@@ -216,9 +224,9 @@ namespace DeusaldServerToolsClient
             }
         }
 
-        public async Task<TResponse?> MakeHubRequestAsync<TRequest, TResponse>(TRequest req, bool ignoreError = false)
-            where TRequest : ProtoMsg<TRequest>, IRequest, new()
-            where TResponse : ProtoMsg<TResponse>, IResponse, new()
+        private async Task<TResponse?> SendHubRequestAsync<TRequest, TResponse>(TRequest req, bool ignoreError = false)
+            where TRequest : RequestBase<TResponse>
+            where TResponse : ResponseBase, new()
         {
             if (ConnectionState != HubConnectionState.Connected)
             {
@@ -229,8 +237,9 @@ namespace DeusaldServerToolsClient
 
             try
             {
-                byte[]                    responseSerialized = await _HubConnection!.InvokeAsync<byte[]>("OnRequestFromClient", RequestData.GetHubUrl<TRequest>(), req.Serialize());
-                ServerResponse<TResponse> response           = ServerResponse<TResponse>.Deserialize(responseSerialized);
+                if (req.SendMethod !=  SendMethodType.SignalR_Hub) throw new Exception("Send method not supported");
+                byte[]                    responseSerialized = await _HubConnection!.InvokeAsync<byte[]>("OnRequestFromClient", req.Address, req.Serialize());
+                ServerResponse<TResponse> response           = ProtoMsgBase.Deserialize<ServerResponse<TResponse>>(responseSerialized);
                 if (response.ErrorCode == ErrorCode.Unauthorized) OnUnauthorizedError?.Invoke();
 
                 if (response.Success) return response.Data;
@@ -269,7 +278,7 @@ namespace DeusaldServerToolsClient
 
         private void ExecuteHubMessage(string msgId, byte[] data)
         {
-            if (!_MsgIdToDeserializer.TryGetValue(msgId, out Func<byte[], IHubMsg>? deserializer)) return;
+            if (!_MsgIdToDeserializer.TryGetValue(msgId, out Func<byte[], HubMsgBase>? deserializer)) return;
             if (!_Callbacks.TryGetValue(msgId, out List<Delegate>? callbacks)) return;
             foreach (Delegate callback in callbacks) callback.DynamicInvoke(deserializer(data));
         }
