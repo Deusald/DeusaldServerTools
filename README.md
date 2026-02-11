@@ -1,309 +1,228 @@
-# Deusald Server Tools — Server & Client Libraries
+# Deusald Server Tools — Backend & Client Libraries
 
-**Deusald Server Tools** is a pair of lightweight .NET libraries for building strongly-typed backends and clients using **ASP.NET Core + SignalR**.
+**Deusald Server Tools** is a small pair of .NET libraries that help you build **strongly-typed** backend endpoints and a **typed client SDK** for:
+- **HTTP (REST-like) requests**
+- **SignalR hub requests + hub messages**
 
-This repository contains two main libraries:
+The intended workflow is: **shared contracts** → **backend resolvers** → **client sends strongly-typed requests**.
 
-* **DeusaldServerToolsBackend** → server framework
-* **DeusaldServerToolsClient** → client SDK
+This repo contains two projects:
 
-They are designed to work together using shared request/response contracts and attribute-based resolvers.
+- **DeusaldServerToolsBackend** — server-side helpers for ASP.NET Core + SignalR
+- **DeusaldServerToolsClient** — client SDK (REST + SignalR) + shared request abstractions
 
 ---
 
-## Overview
+## Requirements / Target frameworks
 
-The libraries provide:
+- **Backend:** `net10.0`
+- **Client:** `netstandard2.1` and `net10.0`
 
-* Strongly-typed REST endpoints
-* Strongly-typed SignalR hub messaging
-* Shared contracts between client and server
-* JWT authentication helpers
-* Automatic serialization & error handling
-* Simple client API for REST and hub calls
-* Attribute-driven endpoint registration
+(Your app can target a newer framework as long as it can reference these.)
 
-The goal is to remove boilerplate and make backend/client communication predictable and type-safe.
+---
+
+## Core ideas
+
+### 1) Shared contracts
+Requests and responses live in a shared project referenced by both server and client.
+
+- HTTP request: derive from `RequestBase<TResponse>`
+- Hub request: derive from `HubRequestBase<TResponse>`
+- Validate inputs by overriding `VerifyData()`
+- Define routing by overriding `Address` (and `SendMethod` for HTTP)
+
+### 2) Backend resolvers
+Each request type is handled by a resolver class on the server:
+- HTTP resolver: `ProtoPairBinaryEndpointResolver<TRequest, TResponse>`
+- Hub resolver:  `ProtoPairBinaryHubEndpointResolver<TRequest, TResponse>`
+
+Resolvers are discovered and mapped automatically when decorated with `[Endpoint]`.
+
+### 3) Client sends typed requests
+From the client, you call `.SendAsync(apiClient)` on the request instance.  
+The SDK handles serialization, error callbacks, and (optionally) JWT.
 
 ---
 
 # DeusaldServerToolsBackend
 
-## Purpose
+## Install
 
-The backend library provides infrastructure for building ASP.NET Core servers with:
-
-* Attribute-based REST resolvers
-* SignalR hub request resolvers
-* Authentication helpers
-* Centralized error handling
-* Security stamp validation
-* Typed endpoint routing
+Reference the project or NuGet package used by your solution.
 
 ---
 
-## Installation
+## Minimal server setup
 
-Add a reference to:
-
-```
-DeusaldServerToolsBackend
-```
-
-and your shared contracts project.
-
----
-
-## Backend Setup
-
-### Basic server bootstrap
-
-In `Program.cs`:
+A typical `Program.cs`:
 
 ```csharp
+using DeusaldServerToolsBackend;
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.SetupDefaultWebHost();
+// Base ASP.NET Core setup (controllers/json, cors in dev, etc.)
+builder.DeusaldBaseBuilderConfigure();
+
+// JWT auth helper (issuer/audience/signing key via env var)
+builder.DeusaldAuthBuilderConfigure(
+    issuer:  Auth.ISSUER,
+    audience: Auth.AUDIENCE,
+    expireTimeDays: 7,
+    registeredClaimNames: TokenModel.Empty.GetData().Keys.ToList()
+);
+
+// Register resolvers (scan one or more assemblies)
+builder.Services.AddEndpointResolvers(typeof(Program).Assembly);
+
+// Your SignalR hub
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
-app.MapResolverEndpoints();
-app.MapHub<GameHub>("/hub");
+// Standard middleware (auth, routing, health, etc.)
+app.DeusaldBaseWebAppConfigure(emptyFavicon: true);
+
+// Map resolvers + hub
+app.MapEndpointResolvers(typeof(Program).Assembly);
+app.DeusaldBaseHubWebAppConfigure<GameHub>();
 
 app.Run();
 ```
 
-This automatically registers all resolvers marked with attributes.
+### Environment variables used by the built-in helpers
+
+- `AUTH_SIGNING_KEY` (required for JWT signing/validation)
+- `SERVICE_VERSION`, `COMMIT_HASH` (used by logging helpers)
+- Your app may also define its own env vars (the example uses `BACKEND_VERSION` inside `TokenModel`).
 
 ---
 
-## Creating a REST Endpoint
-
-### 1. Define shared contracts
+## Defining a HTTP request + response (shared contracts)
 
 ```csharp
-public class LoginRequest : ProtoMsg<LoginRequest>, IAPIRequest<LoginRequest, LoginResponse>
-{
-    public const string         URL              = "/auth/login";
-    public const HttpMethodType HTTP_METHOD_TYPE = HttpMethodType.POST;
-    
-    public string Username = "";
-    
-    static LoginRequest()
-        {
-            _model = new ProtoModel<LoginRequest>(
-                ProtoField.String(1, static (ref LoginRequest o) => ref o.Username)
-            );
-        }
+using DeusaldServerToolsClient;
+using DeusaldSharp;
 
-        public void VerifyData()
-        {
-            Username.VerifyStringLength(nameof(Username), 0, 16);
-        }
+public partial class LoginRequest : RequestBase<LoginResponse>
+{
+    public override SendMethodType SendMethod => SendMethodType.Http_Post;
+    public override string Address            => "auth/login";
+
+    [ProtoField(1)] public string Username = string.Empty;
+
+    public override void VerifyData()
+        => Username.VerifyStringLength(nameof(Username), 0, 16);
 }
 
-public class LoginResponse : ProtoMsg<LoginResponse>, IResponse
+public partial class LoginResponse : ResponseBase
 {
-     public Guid     UserId;
-     public string   Username = "";
-     public string   JwtToken = "";
-     public DateTime ExpiresAt;
-     
-     static LoginResponse()
-        {
-            _model = new ProtoModel<LoginResponse>(
-                ProtoField.Guid(1, static (ref LoginResponse o) => ref o.UserId),
-                ProtoField.String(2, static (ref LoginResponse o) => ref o.Username),
-                ProtoField.String(3, static (ref LoginResponse o) => ref o.JwtToken),
-                ProtoField.DateTime(4, static (ref LoginResponse o) => ref o.ExpiresAt)
-            );
-        }
+    [ProtoField(1)] public Guid     UserId;
+    [ProtoField(2)] public string   Username = string.Empty;
+    [ProtoField(3)] public string   JwtToken = string.Empty;
+    [ProtoField(4)] public DateTime ExpiresAt;
 }
 ```
 
-### 2. Create a resolver
+> The examples use **DeusaldSharp** proto attributes (`[ProtoField]`) for binary serialization.
+
+---
+
+## Implementing the HTTP resolver
 
 ```csharp
-[Endpoint(typeof(LoginRequest))]
+using System.Security.Claims;
+using DeusaldServerToolsBackend;
+using DeusaldServerToolsClient;
+
+[Endpoint]
 [EndpointAllowAnonymous]
-public class LoginResolver(ServerResponseHelper serverResponseHelper, ITokenProvider tokenProvider)
-    : BoxedBinaryEndpointResolver<LoginRequest, LoginResponse>(serverResponseHelper)
+public class LoginResolver(
+    ServerResponseHelper serverResponseHelper,
+    ITokenProvider tokenProvider
+) : ProtoPairBinaryEndpointResolver<LoginRequest, LoginResponse>(serverResponseHelper)
 {
-    protected override int RequestMaxBytesCount => 1024;
-    
-    protected override Task<LoginResponse> HandleAsync(ClaimsPrincipal? claimsPrincipal, LoginRequest request)
+    protected override int _RequestMaxBytesCount => 1024;
+
+    protected override Task<LoginResponse> HandleAsync(ClaimsPrincipal? user, LoginRequest request)
     {
-        UsernameVerificator verificator = new UsernameVerificator(
-            minCharacters: 3,
-            maxCharacters: 16,
-            whitespaceRequirement: true,
-            charactersRequirementRegex: "A-Za-z0-9 _"
-        );
+        // validate, build token, etc...
+        // throw new ServerException(ErrorCode.CustomError, "...") to return typed errors
 
-        if (!verificator.CheckUsernameRequirements(request.Username)) 
-            throw new ServerException(ErrorCode.CustomError, "Username do not fulfill requirements!");
-
-        Guid userId = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(request.Username))[..16]);
-
-        TokenModel model = new TokenModel
-        {
-            Username       = request.Username,
-            ClientVersion  = claimsPrincipal.GetClientVersion(),
-            UserId         = userId,
-            BackendVersion = BaseEnvVariables.BACKEND_VERSION.GetEnvironmentVariable()!,
-            SecurityStamp  = Guid.NewGuid()
-        };
-
-        string token = TokenBuilder.CreateToken(tokenProvider, model, out DateTime expirationTime);
-        return Task.FromResult(new LoginResponse
-        {
-            UserId    = userId,
-            Username  = request.Username,
-            JwtToken  = token,
-            ExpiresAt = expirationTime
-        });
-}
-```
-
-The endpoint is automatically registered at `/login`.
-
----
-
-## Creating a Hub Resolver
-
-### 1. Define hub request/response
-
-```csharp
-public class HeartBeatRequest : ProtoMsg<HeartBeatRequest>, IHubRequest<HeartBeatRequest, HeartBeatResponse>
-    {
-        public const string HUB_URL = nameof(HeartBeatRequest);
-        
-        static HeartBeatRequest()
-        {
-            _model = new ProtoModel<HeartBeatRequest>();
-        }
-        
-        public void VerifyData() { }
-    }
-
-    public class HeartBeatResponse : ProtoMsg<HeartBeatResponse>, IResponse
-    {
-        static HeartBeatResponse()
-        {
-            _model = new ProtoModel<HeartBeatResponse>();
-        }
-    }
-```
-
-### 2. Implement resolver
-
-```csharp
-[HubRequest(typeof(HeartBeatRequest))]
-public class HeartBeatResolver(ServerResponseHelper serverResponseHelper) 
-    : BoxedHubRequestResolver<HeartBeatRequest, HeartBeatResponse>(serverResponseHelper)
-{
-    protected override int  RequestMaxBytesCount => 1024;
-    protected override bool HeartBeat            => true;
-
-    protected override Task<HeartBeatResponse> HandleAsync(HubRequestContext ctx, HeartBeatRequest request)
-    {
-        return Task.FromResult(new HeartBeatResponse());
+        return Task.FromResult(new LoginResponse { /* ... */ });
     }
 }
 ```
 
----
+### Authentication attributes
 
-## Authentication
-
-JWT helpers are included:
-
-```csharp
-builder.DeusaldAuthBuilderConfigure(Auth.ISSUER, Auth.AUDIENCE, 7, TokenModel.Empty.GetData().Keys.ToList());
-```
-
-You can protect endpoints with:
-
-```csharp
-[EndpointAuthorize]
-```
-
-or allow anonymous access:
-
-```csharp
-[EndpointAllowAnonymous]
-```
+- Protect an endpoint: `[EndpointAuthorize]`
+- Allow anonymous: `[EndpointAllowAnonymous]`
 
 ---
 
-## Error Handling
-
-Throw a `ServerException` inside resolvers to return structured errors to clients:
+## Defining & handling a hub request
 
 ```csharp
-throw new ServerException(
-    ErrorCode.InvalidRequest,
-    "Invalid credentials");
+using DeusaldServerToolsClient;
+
+public partial class HeartbeatRequest : HubRequestBase<HeartbeatResponse>
+{
+    public override string Address => "heartbeat";
+    public override void VerifyData() { }
+}
+```
+
+Resolver:
+
+```csharp
+using DeusaldServerToolsBackend;
+
+[Endpoint]
+public class HeartBeatResolver(ServerResponseHelper serverResponseHelper)
+    : ProtoPairBinaryHubEndpointResolver<HeartbeatRequest, HeartbeatResponse>(serverResponseHelper)
+{
+    protected override int  _RequestMaxBytesCount => 1024;
+    protected override bool _HeartBeat            => true;
+
+    protected override Task<HeartbeatResponse> HandleAsync(HubRequestContext ctx, HeartbeatRequest request)
+        => Task.FromResult(new HeartbeatResponse());
+}
 ```
 
 ---
 
 # DeusaldServerToolsClient
 
-## Purpose
+## Install
 
-The client library provides a simple API for:
+Reference the project or NuGet package:
 
-* Calling REST endpoints
-* Connecting to SignalR hubs
-* Sending typed hub requests
-* Receiving hub messages
-* Managing JWT authentication
-* Centralized error callbacks
-
-It is designed for desktop, mobile, and WebAssembly clients.
-
----
-
-## Installation
-
-Add a reference to:
-
-```
-DeusaldServerToolsClient
-```
-
-and your shared contracts project.
+- Package id: **DeusaldServerToolsClient**
 
 ---
 
 ## Creating an APIClient
 
-Example setup (Blazor/WebAssembly style):
-
 ```csharp
+using System.Net;
+using DeusaldServerToolsClient;
+
 Dictionary<BackendAddress, string> addresses = new()
 {
     { BackendAddress.Localhost, "http://127.0.0.1:50001" }
 };
 
-void OnRequestError(
-    string requestType,
-    HttpStatusCode code,
-    ErrorCode errorCode,
-    string message,
-    Guid id)
-{
-    Console.WriteLine(
-        $"Error {requestType}: {message}");
-}
+void OnRequestError(string requestType, HttpStatusCode code, ErrorCode errorCode, string message, Guid id)
+    => Console.WriteLine($"Request {requestType} error {code}/{errorCode}: {message} ({id}).");
 
-var apiClient = new APIClient(
+APIClient apiClient = new APIClient(
     addresses,
-    false,
-    OnRequestError,
-    new ConsoleLogProvider(LogLevel.Information),
-    new Version(0, 1, 0)
+    withDispatcher: false,
+    onRequestError: OnRequestError,
+    logProvider: new ConsoleLogProvider(LogLevel.Information),
+    clientVersion: new Version(0, 1, 0)
 );
 
 apiClient.SetBaseAddress(BackendAddress.Localhost);
@@ -311,14 +230,13 @@ apiClient.SetBaseAddress(BackendAddress.Localhost);
 
 ---
 
-## Calling a REST Endpoint
+## Sending a HTTP request
 
 ```csharp
-LoginResponse? response =
-    await new LoginRequest
-    {
-        Username = "user1"
-    }.SendRESTAsync(apiClient);
+LoginResponse? response = await new LoginRequest
+{
+    Username = "user1"
+}.SendAsync(apiClient);
 
 if (response != null)
 {
@@ -326,100 +244,39 @@ if (response != null)
 }
 ```
 
-`SendRESTAsync` returns `null` if the request fails.
+`SendAsync` returns `null` if the request fails (and triggers your error callback).
 
 ---
 
-## Connecting to a Hub
+## Connecting to SignalR
 
 ```csharp
-Exception? exception =
-    await apiClient.ConnectToHubAsync("/hub");
-
-if (exception != null)
-{
-    Console.WriteLine(exception);
-}
+Exception? ex = await apiClient.ConnectToHubAsync("/hub");
+if (ex != null) Console.WriteLine(ex);
 ```
 
-You can subscribe to connection events:
+Useful events:
 
 ```csharp
 apiClient.OnConnectedToHub      += Console.WriteLine;
 apiClient.OnDisconnectedFromHub += Console.WriteLine;
-apiClient.OnUnauthorizedError   += () =>
-    Console.WriteLine("Unauthorized!");
+apiClient.OnExceptionOnMessage  += Console.WriteLine;
+apiClient.OnUnauthorizedError   += () => Console.WriteLine("Unauthorized!");
 ```
 
 ---
 
-## Sending Hub Requests
+## Sending hub requests
 
 ```csharp
-var response =
-    await new HeartBeatRequest()
-        .SendHubAsync(apiClient);
-
-if (response != null)
-{
-    Console.WriteLine(response.ServerTime);
-}
+var hb = await new HeartbeatRequest().SendAsync(apiClient);
 ```
 
-You can also send fire-and-forget messages:
+Fire-and-forget:
 
 ```csharp
-new HeartBeatRequest()
-    .SendHubAsync(apiClient, true)
-    .Forget();
+new HeartbeatRequest().SendAsync(apiClient, ignoreError: true).Forget();
 ```
-
----
-
-## Receiving Hub Messages
-
-Register handlers for hub messages:
-
-```csharp
-apiClient.RegisterToHubMsg<NotificationHubMsg>(
-    msg => Console.WriteLine(msg.Message));
-```
-
----
-
-## JWT Management
-
-Update or clear authentication:
-
-```csharp
-apiClient.UpdateJwtToken(jwtToken);
-apiClient.UpdateJwtToken(string.Empty); // logout
-```
-
-The token is automatically attached to requests.
-
----
-
-## Logging
-
-The client supports pluggable logging:
-
-```csharp
-new ConsoleLogProvider(LogLevel.Information)
-```
-
-You can implement your own provider if needed.
-
----
-
-# Recommended Workflow
-
-1. Define shared contracts in a common project
-2. Implement resolvers in the backend
-3. Call them using the client SDK
-4. Use attributes for routing and security
-
-No manual routing or serialization setup is required.
 
 ---
 

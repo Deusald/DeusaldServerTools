@@ -32,7 +32,7 @@ namespace DeusaldServerToolsBackend;
 
 public sealed class HubResolverRegistry
 {
-    private readonly Dictionary<string, Type> _Map = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Type> _Map = new();
     
     public Type Get(string requestId)
         => _Map.TryGetValue(requestId, out Type? t)
@@ -49,7 +49,7 @@ public static class ResolverEndpointMappingExtensions
     {
         List<Type> resolverTypes =
             assemblies.SelectMany(a => a.GetTypes())
-                      .Where(t => typeof(IEndpointResolver).IsAssignableFrom(t))
+                      .Where(t => typeof(IEndpointResolver).IsAssignableFrom(t) || typeof(IHubRequestResolver).IsAssignableFrom(t))
                       .Where(t => t is { IsAbstract: false, IsInterface: false })
                       .Where(t => t.GetCustomAttribute<EndpointAttribute>() != null)
                       .ToList();
@@ -63,7 +63,7 @@ public static class ResolverEndpointMappingExtensions
     {
         var resolverTypes =
             assemblies.SelectMany(a => a.GetTypes())
-                      .Where(t => typeof(IEndpointResolver).IsAssignableFrom(t))
+                      .Where(t => typeof(IEndpointResolver).IsAssignableFrom(t) || typeof(IHubRequestResolver).IsAssignableFrom(t))
                       .Where(t => t is { IsAbstract: false, IsInterface: false })
                       .Select(t => new
                        {
