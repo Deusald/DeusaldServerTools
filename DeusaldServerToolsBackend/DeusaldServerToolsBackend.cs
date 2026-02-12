@@ -28,5 +28,5 @@ namespace DeusaldServerToolsBackend;
 [PublicAPI]
 public static class DeusaldServerToolsBackend
 {
-    public static readonly Version Version = new(1, 1, 0);
+    public static readonly Version Version = new(1, 2, 0);
 }

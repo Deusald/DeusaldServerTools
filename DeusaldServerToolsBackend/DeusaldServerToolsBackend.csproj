@@ -3,8 +3,8 @@
     <PropertyGroup>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PackageId>DeusaldServerToolsServer</PackageId>
-        <PackageVersion>1.1.0</PackageVersion>
-        <AssemblyVersion>1.1.0</AssemblyVersion>
+        <PackageVersion>1.2.0</PackageVersion>
+        <AssemblyVersion>1.2.0</AssemblyVersion>
         <Title>Deusald Server Tools Server</Title>
         <Authors>Adam "Deusald" Orliński</Authors>
         <Description>C# utils that are often useful in multiplayer game development - server side.</Description>
@@ -22,14 +22,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="DeusaldServerToolsClient" Version="1.1.0" />
-        <PackageReference Include="DeusaldSharp" Version="10.2.1" />
+        <PackageReference Include="DeusaldServerToolsClient" Version="1.2.0" />
+        <PackageReference Include="DeusaldSharp" Version="10.3.1" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.3" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.3" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
         <PackageReference Include="NLog" Version="6.1.0" />
         <PackageReference Include="NLog.Extensions.Logging" Version="6.1.1" />
-        <PackageReference Include="StackExchange.Redis" Version="2.10.14" />
+        <PackageReference Include="StackExchange.Redis" Version="2.11.0" />
     </ItemGroup>
     
 </Project>
